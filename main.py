@@ -9,7 +9,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import pandas as pd
 import settings
-from openpyxl import load_workbook
+import openpyxl
 
 
 # Execution
@@ -52,12 +52,16 @@ class TestMySite():
 
 
 	def test_TC_LOGIN(self, set_up):
-		all_xlsx = pd.read_excel('test_data.xlsx', sheet_name='Login')
-		all_xlsx2 = pd.read_excel('test_data.xlsx', sheet_name='Register')
-		for num in range(len(all_xlsx)):
+		wbk_name = 'test_data.xlsx'
+		wbk = openpyxl.load_workbook(wbk_name)
+		ws1 = wbk['Login']
+		column_B = ws1['B']
+		# all_xlsx = pd.read_excel('test_data.xlsx', sheet_name='Login')
+		# all_xlsx2 = pd.read_excel('test_data.xlsx', sheet_name='Register')
+		for row in range(2, len(column_B) + 1):
 			expected = 'Invalid email or password!'
 			try:
-				if all_xlsx['Execution'][num] == 'YES':
+				if ws1.cell(row, 4).value == 'YES':
 					path = self.get_file_name_by_time(settings.LOGIN_PATH)
 					self.driver.get(settings.MAIN_URL)
 					start_btn = self.driver.find_element_by_id('start')
@@ -67,13 +71,13 @@ class TestMySite():
 					start_btn.click()
 					self.driver.find_element_by_name('email').clear()
 					email = self.driver.find_element_by_name('email')
-					email.send_keys(all_xlsx['UserName'][num])
+					email.send_keys(ws1.cell(row, 2).value)
 					path = self.get_file_name_by_time(settings.LOGIN_PATH)
 					self.draw_rectangle(email).save(path)
 					time.sleep(2)
 					self.driver.find_element_by_name('password').clear()
 					password = self.driver.find_element_by_name('password')
-					password.send_keys(all_xlsx['Password'][num])
+					password.send_keys(ws1.cell(row, 3).value)
 					path = self.get_file_name_by_time(settings.LOGIN_PATH)
 					self.draw_rectangle(password).save(path)
 					time.sleep(2)
@@ -83,43 +87,15 @@ class TestMySite():
 					time.sleep(2)
 					login_btn.click()
 					WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Add Project"))).click()
-					all_xlsx['Result'][num] = 'PASS'
+					ws1.cell(row, 5).value = 'PASS'
 					
 			except:
-				all_xlsx['Result'][num] = 'FAIL'
+				ws1.cell(row, 5).value = 'FAIL'
+				err_msg = self.driver.find_element_by_xpath('//label')
+				path = self.get_file_name_by_time(settings.LOGIN_PATH)
+				self.draw_rectangle(err_msg).save(path)
+				time.sleep(2)
+				assert err_msg.text == expected		
 
-		# book = load_workbook('test_data.xlsx')
-		# writer = pd.ExcelWriter('test_data.xlsx', engine='openpyxl')
-		# writer.book = book
-		# all_xlsx.to_excel(writer, "Login", index=False)
-		all_xlsx.to_excel('test_data.xlsx', sheet_name='Login', index=False)
-		all_xlsx.to_excel('test_data.xlsx', sheet_name='Register', index=False)
-			# err_msg = self.driver.find_element_by_xpath('//label')
-			# path = self.get_file_name_by_time(settings.LOGIN_PATH)
-			# self.draw_rectangle(err_msg).save(path)
-			# time.sleep(2)
-			# assert err_msg.text == expected
-
-
-	# all_xlsx = pd.read_excel('test_data.xlsx', sheet_name='Login')
-	#print(all_xlsx.head(3))
-	#print(all_xlsx.columns)
-	#print(all_xlsx['UserName'])
-	# all_xlsx.columns
-
-	# for ix in range(len(all_xlsx)):
-	# 	row = all_xlsx.iloc[ix]
-	# 	print(row[1])
-	# 	print(row[2])
-
-	# print(all_xlsx['Password'])
-	# for row in all_xlsx['UserName']:
-	# 	print(row)
-
-	# all_xlsx.columns
-	# print(all_xlsx['UserName'])
-	# for num in range(len(all_xlsx)):
-	# 	print(all_xlsx['UserName'][0])
-	# 	print(all_xlsx['Password'][0])
-	# print(all_xlsx['UserName'][0])
-	# print(all_xlsx['Password'][0])
+		wbk.save(wbk_name)
+		wbk.close
